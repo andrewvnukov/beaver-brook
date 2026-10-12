@@ -268,14 +268,14 @@ const nm = o => lang()==="ru"? o.ru : o.en;
 
 // ---------- Постройки деревни (фиксированный порядок, у каждой своё место в сцене) ----------
 const BUILDINGS = [
-  {id:'bridge',   ru:'Мостик',  en:'Footbridge',   cost:30,   ips:0.006, zone:'brook',   fx:0.50, hb:46, wb:96},
-  {id:'lodge',    ru:'Хатка',   en:'Beaver Lodge', cost:90,   ips:0.014, zone:'brook',   fx:0.74, hb:40, wb:70},
-  {id:'pier',     ru:'Причал',  en:'Little Pier',  cost:220,  ips:0.028, zone:'brook',   fx:0.27, hb:60, wb:80},
-  {id:'mill',     ru:'Мельница',en:'Water Mill',   cost:500,  ips:0.05,  zone:'brook',   fx:0.89, hb:64, wb:72},
-  {id:'gazebo',   ru:'Беседка', en:'Gazebo',       cost:1100, ips:0.08,  zone:'horizon', fx:0.31, hb:64, wb:66},
-  {id:'hive',     ru:'Пасека',  en:'Apiary',       cost:2300, ips:0.12,  zone:'horizon', fx:0.86, hb:40, wb:58},
-  {id:'lantern',  ru:'Маячок',  en:'Lantern Tower',cost:4600, ips:0.18,  zone:'horizon', fx:0.10, hb:68, wb:34},
-  {id:'windmill', ru:'Ветряк',  en:'Windmill',     cost:9000, ips:0.26,  zone:'horizon', fx:0.66, hb:86, wb:74},
+  {id:'bridge',   ru:'Мостик',  en:'Footbridge',   cost:30, ips:0.004, zone:'brook',   fx:0.50, hb:46, wb:96},
+  {id:'lodge',    ru:'Хатка',   en:'Beaver Lodge', cost:100, ips:0.009, zone:'brook',   fx:0.74, hb:40, wb:70},
+  {id:'pier',     ru:'Причал',  en:'Little Pier',  cost:260, ips:0.016, zone:'brook',   fx:0.27, hb:60, wb:80},
+  {id:'mill',     ru:'Мельница',en:'Water Mill',   cost:600, ips:0.026,  zone:'brook',   fx:0.89, hb:64, wb:72},
+  {id:'gazebo',   ru:'Беседка', en:'Gazebo',       cost:1300, ips:0.04,  zone:'horizon', fx:0.31, hb:64, wb:66},
+  {id:'hive',     ru:'Пасека',  en:'Apiary',       cost:2700, ips:0.058,  zone:'horizon', fx:0.86, hb:40, wb:58},
+  {id:'lantern',  ru:'Маячок',  en:'Lantern Tower',cost:5200, ips:0.08,  zone:'horizon', fx:0.10, hb:68, wb:34},
+  {id:'windmill', ru:'Ветряк',  en:'Windmill',     cost:9500, ips:0.11,  zone:'horizon', fx:0.66, hb:86, wb:74},
 ];
 const BD = id => BUILDINGS.find(b=>b.id===id);
 
@@ -973,6 +973,22 @@ function buildBg(){
   const mead=g.createLinearGradient(0,horizonY,0,brookY);
   mead.addColorStop(0,'#9CCB7A'); mead.addColorStop(1,'#86BB64');
   g.fillStyle=mead; g.fillRect(0,horizonY+2,W,brookY-horizonY+10);
+  // на широком экране — рощицы и кусты по бокам луга, чтобы сцена не пустела
+  const sideL=boardX-60, sideR=W-(boardX+B+60);
+  if(sideL>120){
+    const sk=Math.min(2.2, (brookY-horizonY)/300);
+    for(let i=0;i<14;i++){
+      const left=i%2===0, span=left? sideL-40 : sideR-40;
+      const fx=((i*0.618)%1), x= left? 20+fx*span : W-20-fx*span;
+      const fy=((i*0.381+0.2)%1), y=horizonY+40+fy*(brookY-horizonY-70);
+      const sc=sk*(0.7+fy*0.6);
+      if(i%3===2){ g.fillStyle=sphereFill(g,x,y-8*sc,14*sc,'#6FAE58'); g.strokeStyle=INK; g.lineWidth=1.6;
+        g.beginPath(); g.arc(x-8*sc,y-6*sc,8*sc,0,6.283); g.arc(x+6*sc,y-7*sc,9*sc,0,6.283); g.arc(x,y-13*sc,9*sc,0,6.283); g.fill();
+        g.beginPath(); g.arc(x,y-13*sc,9*sc,3.4,6.0); g.stroke();
+        g.fillStyle='#F2788A'; [[-6,-10],[5,-14],[2,-5]].forEach(([a,b])=>{ g.beginPath(); g.arc(x+a*sc,y+b*sc,1.8*sc,0,6.283); g.fill(); }); }
+      else drawTree(g,x,y,sc,i%4===1?'pine':'round',i%4===1?'#5E9E57':'#79B85E');
+    }
+  }
   // тропинка от родника вбок
   // трава и цветочки по лугу (вне поля)
   for(let i=0;i<120;i++){
@@ -1030,7 +1046,7 @@ function buildBg(){
   vg.addColorStop(0,'rgba(40,40,20,0)'); vg.addColorStop(1,'rgba(40,40,20,.28)');
   g.fillStyle=vg; g.fillRect(0,0,W,H);
 }
-const bScale = b => b.zone==='horizon' ? Math.max(0.55,Math.min(1,(horizonY-hudH+20)/95)) : Math.min(1.15, brookH/130);
+const bScale = b => b.zone==='horizon' ? Math.max(0.55,Math.min(1.5,(horizonY-hudH+20)/95, colW/500)) : Math.min(1.45, brookH/120);
 function drawSpringRock(g,x,y){
   g.save(); g.translate(x,y);
   const st=(sx,sy,r,c)=>{ g.fillStyle=sphereFill(g,sx,sy,r,c); ell(g,sx,sy,r,r*0.8); g.fill(); g.strokeStyle=INK; g.lineWidth=2; g.stroke();
@@ -1561,7 +1577,7 @@ function frame(now){
     ctx.beginPath(); ctx.moveTo(x,y); ctx.quadraticCurveTo(x+9,y-3,x+18,y); ctx.stroke(); }
   ctx.lineCap='butt';
   // утята
-  ducks.forEach((d,i)=>drawDuck(ctx, colX+colW*d.x, wy0+(wy1-wy0)*(i?0.62:0.38), Math.min(1.1,brookH/120), d.dir, t+d.ph));
+  ducks.forEach((d,i)=>drawDuck(ctx, colX+colW*d.x, wy0+(wy1-wy0)*(i?0.62:0.38), Math.min(1.45,brookH/115), d.dir, t+d.ph));
   // рыбка выпрыгивает
   if(fish.t>=0){ const p=fish.t/1.2, fx=fish.x+p*40, fy=wy0+(wy1-wy0)*0.5-Math.sin(p*3.14)*30;
     drawFish(ctx,fx,fy,0.9,-1.2+p*2.4);
@@ -1578,7 +1594,7 @@ function frame(now){
   drawBoard(now);
   drawBeds(t);
   // бобёр
-  const bx=colX+Math.max(36,colW*0.12), by=brookY+brookH-6, bs=Math.min(1.1,brookH/125);
+  const bx=colX+Math.max(36,colW*0.12), by=brookY+brookH-6, bs=Math.min(1.5,brookH/118);
   drawBeaver(ctx,bx,by,bs,t,beaverCheer);
   drawNamePlate(bx,by-66*bs,T("beaver"));
   drawFx();
@@ -1592,7 +1608,7 @@ window.render_game_to_text = () => {
     coins:S.logs, logs:S.logs, lifetime:S.lifetime, lvl:S.built.length, level:S.level, solved:S.solved,
     built:S.built.slice(), ips:ips(), upCost:upCost(), hints:S.hints, streak:S.streak, lastClaimDay:S.lastClaimDay,
     n: board?board.n:0, targets: board?board.targets.length:0, watered: wt.filter(x=>x).length,
-    moves:S.moves, par, phase, lang:lang(), wrong: board? board.tiles.filter(t=>t.req&&!isRight(t)).length : 0,
+    moves:S.moves, par, gamePhase:phase, lang:lang(), wrong: board? board.tiles.filter(t=>t.req&&!isRight(t)).length : 0,
     rots: board? board.tiles.map(t=>t.r) : [], tips:Object.keys(S.tips),
     modals:[...document.querySelectorAll('.modal.open')].map(m=>m.id)
   });
@@ -1605,6 +1621,10 @@ window.__solveAll = () => { if(phase!=='play') return false;
   board.tiles.forEach(t=>{ if(t.req){ const p=PERIOD[t.type]; const k=((t.rs-t.r)%p+p)%p; t.r=(t.r+k)&3; t.angT+=k*Math.PI/2; } });
   if(recomputeFlow(false)){ phase='solving'; solveT=0.9; } return true; };
 window.__finishSolve = () => finishSolve();
+window.__solvePartial = keep => { if(phase!=='play') return false;
+  const w=board.tiles.map((t,i)=>i).filter(i=>board.tiles[i].req && !isRight(board.tiles[i]));
+  w.slice(keep).forEach(i=>{ const t=board.tiles[i], p=PERIOD[t.type], k=((t.rs-t.r)%p+p)%p; t.r=(t.r+k)&3; t.angT+=k*Math.PI/2; t.ang=t.angT; });
+  recomputeFlow(true); return true; };
 window.__grant = n => { grant(n); refreshHud(); };
 window.__buy = id => buyBuilding(id);
 window.__setLevel = L => { S.level=L; newBoard(false); refreshHud(); };

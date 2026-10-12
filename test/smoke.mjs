@@ -30,7 +30,7 @@ const boot = async (p = page) => { await p.waitForFunction(() => typeof window.r
 await page.goto(url); await boot();
 let s = await st();
 assert(s.level === 1 && s.n === 4 && s.targets === 1, 'fresh game: brook №1, 4x4 board, 1 flowerbed');
-assert(s.phase === 'play' && s.watered === 0, 'fresh board is not pre-solved');
+assert(s.gamePhase === 'play' && s.watered === 0, 'fresh board is not pre-solved');
 assert(s.lang === 'ru' && (await page.textContent('#logsL')) === 'БРЁВНА', 'RU locale auto-detected (navigator) -> RU labels');
 assert(s.modals.length === 0, 'no daily/offline window for a brand-new player');
 
@@ -50,7 +50,7 @@ s = await st(); assert(s.moves === 1, 'tap outside the board does not rotate any
 const plan = await page.evaluate(() => window.__wrongTiles().map(i => [i, window.__turnsNeeded(i), window.__tileCenter(i)]));
 for (const [i, k, p] of plan) for (let j = 0; j < k; j++) { await page.touchscreen.tap(p.x, p.y); await page.waitForTimeout(30); }
 s = await st();
-assert(s.watered === s.targets && (s.phase === 'solving' || s.phase === 'card'), 'solving by real taps waters every flowerbed');
+assert(s.watered === s.targets && (s.gamePhase === 'solving' || s.gamePhase === 'card'), 'solving by real taps waters every flowerbed');
 await page.waitForSelector('#winCard.open', { timeout: 3000 });
 assert(true, 'win card appears after water reaches the beds');
 const logs0 = (await st()).logs;
@@ -58,7 +58,7 @@ await page.tap('#winTake');
 s = await st();
 assert(s.level === 2 && s.solved === 1 && s.logs > logs0, 'Collect: logs credited, next brook generated');
 assert(s.lifetime === s.logs, 'level reward goes through earn() (counts in lifetime)');
-assert(s.phase === 'play' && s.watered === 0 && s.moves === 0, 'new brook starts unsolved with 0 moves');
+assert(s.gamePhase === 'play' && s.watered === 0 && s.moves === 0, 'new brook starts unsolved with 0 moves');
 
 // x2 за ручей без SDK — ровно двойная награда, один раз; подарочная часть мимо lifetime
 await page.evaluate(() => window.__solveAll()); await page.waitForSelector('#winCard.open', { timeout: 3000 });
@@ -72,7 +72,10 @@ assert(s.logs - r1.logs === reward * 2 && s.lifetime - r1.lifetime === reward, '
 s = await st(); const w0 = s.wrong;
 await page.tap('#hintBtn');
 s = await st();
-assert(s.wrong === Math.max(0, w0 - 3) || s.phase !== 'play', 'hint fixes up to 3 wrong tiles');
+assert(s.wrong === Math.max(0, w0 - 3) || s.gamePhase !== 'play', 'hint fixes up to 3 wrong tiles');
+// если подсказка дорешала маленькое поле — забираем награду, чтобы дальше работать с нерешённым ручьём
+await page.waitForTimeout(1100); await closeAll(page);
+const lvlNow = (await st()).level;
 
 // деревня: открыть, построить (реальный tap)
 await page.evaluate(() => window.__grant(500));
@@ -104,7 +107,7 @@ assert(s.lang === 'en' && (await page.textContent('#logsL')) === 'LOGS' && (awai
 await page.evaluate(() => { window.dispatchEvent(new Event('pagehide')); });
 await page.reload(); await boot();
 s = await st();
-assert(s.lang === 'en' && s.built.includes('bridge') && s.level === 3, 'save survives reload (lang, buildings, level)');
+assert(s.lang === 'en' && s.built.includes('bridge') && s.level === lvlNow, 'save survives reload (lang, buildings, level)');
 if (s.modals.includes('daily')) { await page.tap('#dayTake'); await page.waitForTimeout(350); }
 
 // повороты текущего ручья сохраняются
