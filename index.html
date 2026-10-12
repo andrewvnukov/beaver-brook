@@ -71,6 +71,10 @@
   .abtn .bs{font-size:11px;font-weight:800;opacity:.92;display:flex;align-items:center;gap:4px}
   .abtn .bs svg{width:12px;height:12px}
   .abtn.busy{filter:grayscale(.5) brightness(.95)}
+  @media (orientation:landscape) and (max-height:559px) and (min-aspect-ratio:6/5){
+    .bottom{position:absolute;right:12px;bottom:calc(10px + env(safe-area-inset-bottom))}
+    .abtn.hint{min-width:0;padding:7px 14px}
+  }
   /* ── модалки ── */
   .modal{position:absolute;inset:0;background:rgba(30,44,40,.55);display:none;align-items:flex-end;
          justify-content:center;pointer-events:auto;z-index:5}
@@ -890,11 +894,15 @@ function resize(){
   cv.width=W*DPR; cv.height=H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0);
   INK=cssVar("--ink")||INK;
   colW=Math.min(W,620); colX=(W-colW)/2;
-  brookH=Math.max(104,Math.min(170,H*0.17));
-  const avail=H-hudH-bottomH-brookH;
-  B=Math.min(colW-128, avail-58-50-30, 540); B=Math.max(B,190);
-  const sky=Math.max(24, avail-B-58-50);
-  horizonY=hudH+sky; springY=horizonY; boardY=horizonY+58;
+  // низкий альбомный экран: «Подсказка» уходит в правый нижний угол (CSS), родник встаёт между чипами и кнопками
+  const land = W>H*1.2 && H<560;
+  bottomH = land ? 0 : 80;
+  brookH = land ? Math.max(50,Math.min(90,H*0.15)) : Math.max(104,Math.min(170,H*0.17));
+  const top = land ? 8 : hudH;
+  const avail=H-top-bottomH-brookH;
+  B=Math.min(colW-128, avail-58-50-(land?0:30), 540); B=Math.max(B, land?150:190);
+  const sky=Math.max(land?8:24, avail-B-58-50);
+  horizonY=top+sky; springY=horizonY; boardY=horizonY+58;
   brookY=boardY+B+50;
   layoutBoard();
   buildBg();
@@ -1567,7 +1575,7 @@ function frame(now){
   ctx.clearRect(0,0,W,H);
   if(bgCan) ctx.drawImage(bgCan,0,0,W,H);
   // облака плывут
-  clouds.forEach((c,i)=>drawCloud(ctx, c*W, hudH*0.55+18+i*14, 0.8+i*0.15));
+  clouds.forEach((c,i)=>drawCloud(ctx, c*W, Math.min(hudH*0.55+18+i*14, boardY-34), 0.8+i*0.15));   // на низком экране не наползают на поле
   // анимированные части построек
   S.built.forEach(id=>{ const b=BD(id), p=buildingPos(b); drawBuilding(ctx,id,p.x,p.y,bScale(b),t,false); });
   // рябь на воде
@@ -1688,6 +1696,7 @@ function boot(raw){
       YaGames.init().then(sdk=>{
         ysdk=sdk;
         readPlatformLang();   // язык платформы читаем на каждом запуске, до первой отрисовки UI
+        if(booted) signalReady();   // SDK ответил позже страховочного boot() — GameReady всё равно уходит (§8.1)
         try{ lb = sdk.leaderboards; }catch(e){}
         return sdk.getPlayer({scopes:false}).then(p=>{player=p;return p.getData(["save"]);})
           .then(d=>boot(d&&d.save?d.save:localRaw)).catch(()=>boot(localRaw));
